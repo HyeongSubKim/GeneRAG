@@ -44,11 +44,8 @@ hest1k_datasets/*/st
 hest1k_datasets/*/wsis
 hest1k_datasets/*/cellvit_seg
 
-# Per-spot foundation-model embeddings (notebook 02)
-hest1k_datasets/*/processed_data/1spot_*
-
-# Generated bookkeeping files from notebook 02
-hest1k_datasets/*/processed_data/all_slide_lst.txt
+# Processed data (anchor gene lists, per-spot embeddings, bookkeeping) — notebook 02
+hest1k_datasets/*/processed_data/
 
 # Linear-probe prediction tensors (notebook 03)
 hest1k_datasets/*/init_pred_fm_pt
