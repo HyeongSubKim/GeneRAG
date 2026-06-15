@@ -26,8 +26,6 @@
   EXAONE Path 2.5, …) with **no structural modification**.
 - **Massive-scale zero-shot prediction**: up to 5,000 unseen genes per
   spot from a single forward pass + convex retrieval.
-- **Instant domain adaptation**: swap the Reference Bank — no weight
-  updates.
 - **Inherently transparent**: ~50 retrieved reference patches per spot
   (sparse α), each weight ``α_i`` directly interpretable as the
   contribution of one training spot.
@@ -182,7 +180,7 @@ python examples/quickstart.py
 
 For real spatial-transcriptomics data the full path looks like this — each step lives
 in its own notebook under [`examples/notebooks/`](examples/notebooks/):
-ㄴ
+
 | Stage | Notebook | What happens |
 |---|---|---|
 | **1. Download** | `01_download_data.ipynb` | Pull HEST-1k slides (PRAD / Kidney / HER2ST / Mouse Brain) from HuggingFace into `./hest1k_datasets/<organ>/`. |
@@ -314,8 +312,7 @@ the two backends, with the GPU path running ~25–70× faster.
 }
 ```
 
-Corresponding author: **Kyungsu Kim** (`kyskim@snu.ac.kr`), Seoul National
-University.
+Maintainer: **Hyeongsub Kim** (`hyeongsub.kim@snu.ac.kr`), Seoul National University.
 
 ## License
 
