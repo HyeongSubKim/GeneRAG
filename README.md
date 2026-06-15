@@ -1,64 +1,332 @@
-# Spatial Transcriptomics Optimization (exp_opt_v2)
+# GeneRAG
 
-## 프로젝트 소개
+**A Retrieval-Augmented Framework for Spatially Resolved Gene Expression Prediction.**
 
-- **이름**: Spatial Transcriptomics Optimization (exp_opt_v2)
-- **목적**: UNI, CONCH, Exaone 등 모델의 저해상도 예측 결과에 대해 **GeneRAG(sparse coding)** 최적화 실험을 자동으로 수행하고, 하이퍼파라미터(alpha, embedding_ratio 등) 탐색 결과를 CSV로 저장합니다.
-- **핵심 흐름**: `init_pred_pt` 디렉터리의 `.pt` 예측 파일 스캔 → 모델/유전자 리스트별로 Bank 데이터 로드 → 테스트 슬라이드 예측·GT 로드 → `run_optimization_experiment` 실행 → 결과 CSV 저장
+[![Project Page](https://img.shields.io/badge/Project-Page-success.svg)](https://hyeongsubkim.github.io/GeneRAG-project-page)
+[![Paper](https://img.shields.io/badge/Paper-MICCAI_2026-blue.svg)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python: 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](#)
 
-## 프로젝트 구조
+🌐 **Project page:** <https://hyeongsubkim.github.io/GeneRAG-project-page>
 
-| 경로 | 설명 |
-|------|------|
-| `main.py` | 진입점. lr_pred_pt 스캔, 모델별 최적화 실험 실행, 결과 저장 |
-| `spatial_analysis/` | 분석·평가 패키지 |
-| `spatial_analysis/config.py` | `search_space` (lasso, elasticnet, ridge 파라미터 그리드) |
-| `spatial_analysis/data_loading.py` | 유전자 리스트, Bank, 테스트 예측·GT 로드 |
-| `spatial_analysis/generag.py` | Sparse coding GeneRAG (Lasso/Ridge/ElasticNet, 선택적 UNI 임베딩) |
-| `spatial_analysis/bank_utils.py` | High variable genes, bank 행렬 준비, 유전자 인덱스 |
-| `spatial_analysis/evaluation.py` | 단일/일괄 실험 실행, PCC/MSE/RVD/sparsity 평가 |
-| `selected_gene/` | 유전자 리스트 `.txt` (예: selected_morph_top50_gene_list.txt) |
+> Spatial transcriptomics (ST) is pivotal for deciphering molecular
+> organization, yet cross-modal variability challenges accurate H&E-based
+> profiling. Existing models struggle to generalize to unseen genes and
+> lack clinical interpretability. **GeneRAG** is a *model-agnostic*
+> retrieval-augmented framework with a **Dual-Constrained Retrieval**
+> module: it decouples knowledge storage from model training, optimizes
+> an ElasticNet-based sparse sampling matrix that fuses morphological and
+> biological constraints, and reconstructs full transcriptomic profiles
+> — including entirely unseen genes — by exploiting conserved
+> gene-to-gene correlations.
 
-## 데이터 요구사항
+## Highlights
 
-- **경로 설정** (`main.py` 상단):
-  - `data_path`: HER2ST processed_data 디렉터리 (co-expression 유전자 리스트, 임베딩 등)
-  - `st_path`: 슬라이드별 `.h5ad` 경로 (예: SPA119.h5ad ~ SPA148.h5ad)
-  - `lr_pred_pt_dir` (기본 `./init_pred_pt`): 예측 `.pt` 파일 디렉터리
-  - `selected_gene_dir` (기본 `./selected_gene`): 유전자 리스트 `.txt` 디렉터리
-- **예측 파일 네이밍**: `generated_samples_lr_{MODEL}_{gene_basename}_20sample.pt`
-  - `selected_gene` 내 `{gene_basename}.txt`가 존재해야 해당 조합이 실험 대상에 포함됩니다.
-- **임베딩** (embedding_ratio > 0 사용 시): `data_path` 내 `1spot_uni_ebd_aug` 등, 슬라이드별 `{slide_id}_uni_aug.pt` 형식
+- **Plug-and-play** on top of any Image-to-ST backbone (Stem, UNI,
+  EXAONE Path 2.5, …) with **no structural modification**.
+- **Massive-scale zero-shot prediction**: up to 5,000 unseen genes per
+  spot from a single forward pass + convex retrieval.
+- **Instant domain adaptation**: swap the Reference Bank — no weight
+  updates.
+- **Inherently transparent**: ~50 retrieved reference patches per spot
+  (sparse α), each weight ``α_i`` directly interpretable as the
+  contribution of one training spot.
+- **GPU-accelerated**: batched FISTA solves the joint multi-output
+  ElasticNet for an entire test slide in a single pass on one GPU.
 
-## 설정 요약 (main.py)
+---
 
-- **테스트 슬라이드**: `test_slide = "SPA148"`, **학습(Bank) 슬라이드**: SPA119 ~ SPA153 (테스트 제외)
-- **실험 옵션**: `n_high_var_genes`, `calibration_method` (예: `"log1p"`), `n_jobs` (병렬 GPU 프로세스 수), `embedding_dir`
+## How GeneRAG works
 
-## 실행 방법
+![GeneRAG Dual-Constrained Retrieval](figure/fig2_retrieval.jpg)
+
+*Dual-Constrained Retrieval. **(a)** A single sparse code ``α`` is solved
+jointly against two constraints over the frozen training **Reference Bank
+``D``**: a **Morphological** constraint that reconstructs the query image
+embedding ``f_img`` from the morphology feature bank ``D_img``, and a
+**Biological** constraint that reconstructs the selected **anchor genes**
+``y_anchor`` from the anchor-gene bank ``D_anchor``. **(b)** The same
+sparse code is then applied to the **full gene bank ``D_Full``** to
+reconstruct the complete transcriptome ``ŷ_Full`` — including genes never
+seen in the anchor panel.*
+
+The whole method is two equations.
+
+**Eq. 1 — Dual-Constrained Retrieval.** Solve one ElasticNet for the
+sparse sampling vector ``α`` shared by both modalities:
+
+$$
+\hat\alpha = \arg\min_{\alpha \in \mathbb{R}^N}\; \underbrace{\omega\|f_\text{img} - D_\text{img}\alpha\|_2^2}_{\text{morphological}} + \underbrace{(1-\omega)\|y_\text{anchor} - D_\text{anchor}\alpha\|_2^2}_{\text{biological}} + \underbrace{\gamma\lambda\|\alpha\|_2^2 + (1-\gamma)\lambda\|\alpha\|_1}_{\text{ElasticNet regularization}}.
+$$
+
+**Eq. 2 — Full reconstruction.** Re-use ``α̂`` against the full gene bank:
+
+$$
+\hat y_\text{full} = D_\text{full} \cdot \hat\alpha.
+$$
+
+### Notation
+
+| Symbol | Meaning | Code argument |
+|---|---|---|
+| ``f_img`` | frozen-encoder embedding of the query H&E patch | `test_embeddings` |
+| ``y_anchor`` | initial anchor-gene prediction for the query spot (``ŷ_init``) | `test_anchor` |
+| ``D_img`` | morphology feature bank — embeddings of all training spots | `bank_embeddings` |
+| ``D_anchor`` | anchor-gene bank — anchor-gene rows of all training spots | (slice of `bank_expression`) |
+| ``D_full`` | full gene bank — complete transcriptome of all training spots | `bank_expression` |
+| ``α̂`` | sparse sampling vector over the ``N`` training spots (~50 nnz) | returned internally |
+| ``ŷ_full`` | predicted full transcriptome for the query spot | `predictions` |
+
+### Why it works
+
+- **One code, two views.** ``ω`` balances the morphological vs. biological
+  constraint, so a single ``α̂`` must explain the query *both* in image
+  space *and* in gene space — this is what keeps retrieval grounded.
+- **Sparse by construction.** ``γ`` trades L2 shrinkage against L1
+  sparsity; the resulting ``α̂`` activates only ~50 training spots
+  (``n′`` in panel **(b)**), each weight ``α_i`` directly readable as the
+  contribution of one annotated training spot.
+- **Unseen-gene generalization.** Eqs. 1 and 2 share ``α̂`` but use
+  *different* banks. Because gene-to-gene correlations are conserved
+  across spots, a code fit on the anchor panel transfers to ``D_full``,
+  letting GeneRAG reconstruct thousands of genes that were never used as
+  constraints.
+- **Training-free adaptation.** Everything downstream of the frozen
+  encoder is a convex solve against the Reference Bank — swap the bank and
+  the model adapts to a new tissue/domain with **no weight updates**.
+
+---
+
+## Installation
+
+Requires Python 3.9+.
 
 ```bash
-cd /mnt/nas1/physical_ai/hyeongsub.kim/proj/Stem/exp_opt_v2
-python main.py
+git clone <repo-url> GeneRAG
+cd GeneRAG
+
+python -m venv .venv
+source .venv/bin/activate              # Windows:  .venv\Scripts\activate
+
+# Install PyTorch first using a wheel matched to your CUDA driver.
+# (PyPI's default `torch` wheel ships against the newest CUDA toolkit
+#  and may not match the installed NVIDIA driver — pin the index URL.)
+nvidia-smi | head -1                                                      # check your CUDA version
+pip install torch --index-url https://download.pytorch.org/whl/cu126      # CUDA 12.6 example
+# Other options:
+#   https://download.pytorch.org/whl/cu121     # CUDA 12.1
+#   https://download.pytorch.org/whl/cu118     # CUDA 11.8
+#   https://download.pytorch.org/whl/cpu       # CPU-only fallback
+
+# Install GeneRAG (editable) + optional helpers.
+pip install -e ".[all]"
 ```
 
-`init_pred_pt`에 위 네이밍 규칙에 맞는 `.pt` 파일과 `selected_gene`에 대응하는 `.txt`가 있어야 하며, `st_path`와 `data_path`가 실제 데이터를 가리켜야 합니다.
+**Extras** (defined in ``pyproject.toml``):
 
-## 검색 공간 (search_space) 요약
+| Extra | What it adds |
+|---|---|
+| ``io`` | `anndata` — used by the `.h5ad` I/O helpers in `generag.data` |
+| ``viz`` | `matplotlib` |
+| ``dev`` | `pytest`, `ruff` |
+| ``all`` | `io + viz` |
 
-- **lasso**: alpha, fit_intercept, embedding_ratio (0~1)
-- **elasticnet**: alpha, l1_ratio, embedding_ratio
-- **ridge**: alpha, solver (embedding 미사용)
+The GPU solver dispatches to a PyTorch + CUDA batched FISTA backend
+whenever ``device='cuda'`` is requested; a pure-CPU scikit-learn
+fallback is always available.
 
-`embedding_ratio`: 0=유전자만, 1=임베딩만, 0.5=동일 비율 (gene + embedding 결합 목적함수).
+Sanity-check the install:
 
-## 출력 결과
+```bash
+python -c "import torch; print('cuda:', torch.cuda.is_available())"
+python examples/quickstart.py
+```
 
-- **저장 위치**: `save_path` (기본 `./results`)
-- **파일명**: `{exp_name}_optimization_experiment_results_{model_name}_{gene_basename}.csv`
-- **컬럼**: optimization_method, alpha, embedding_ratio 등 파라미터 + pcc_10, pcc_50, pcc_300, mse, rvd, sparsity 등
+---
 
-## 의존성
+## 30-second usage
 
-- `numpy`, `pandas`, `torch`, `anndata`, `scipy`, `scikit-learn`, `tqdm`
-- requirements.txt는 프로젝트에 포함되어 있지 않으며, 필요 시 별도로 관리하면 됩니다.
+```python
+from generag import GeneRAG
+
+# 1) Build the model from any in-memory reference bank.
+model = GeneRAG(
+    bank_expression=bank_df,           # (n_bank_spots, n_genes) DataFrame  (≡ D_full)
+    bank_embeddings=bank_embeddings,   # (n_bank_spots, d) — optional        (≡ D_img)
+    anchor_genes=anchor_gene_list,     # list of gene names                  (≡ D_anchor)
+    n_high_variable_genes=10_000,
+)
+
+# 2) Predict full gene expression for any new spots (one solve, all spots together).
+predictions, mean_sparsity = model.predict(
+    test_anchor=test_pred_df,          # (n_test_spots, n_anchor_genes)     (≡ y_anchor)
+    test_embeddings=test_embeddings,   # (n_test_spots, d) — optional       (≡ f_img)
+    method='elasticnet',
+    alpha=0.01, l1_ratio=0.9,          # λ, γ in Eq. (1)
+    embedding_ratio=0.75,              # ω in Eq. (1)
+    positive=True,
+    device='cuda',
+)
+# predictions: DataFrame (n_test_spots × n_high_variable_genes)  (≡ ŷ_full)
+```
+
+Run a fully self-contained synthetic example:
+
+```bash
+python examples/quickstart.py
+```
+
+---
+
+## End-to-end pipeline (real data, paper reproduction)
+
+For real spatial-transcriptomics data the full path looks like this — each step lives
+in its own notebook under [`examples/notebooks/`](examples/notebooks/):
+ㄴ
+| Stage | Notebook | What happens |
+|---|---|---|
+| **1. Download** | `01_download_data.ipynb` | Pull HEST-1k slides (PRAD / Kidney / HER2ST / Mouse Brain) from HuggingFace into `./hest1k_datasets/<organ>/`. |
+| **2. Build bank** | `02_build_bank.ipynb` | Select the anchor gene panel (HVG → MT/RPS/RPL filter → top-mean ∩ top-std), then extract per-spot frozen-encoder embeddings (UNI / CONCH / EXAONE Path 2.5 / …) as `.pt` files. |
+| **3. Linear probing** | `03_linear_probing.ipynb` | Train a single linear head on the frozen embeddings to produce `ŷ_init` for every test spot; saves `.pt` files into `init_pred_fm_pt/`. |
+| **4. Retrieval** | `examples/run_experiment.py` | Sweep GeneRAG over the (backbone × anchor-gene-list) combinations produced above and write per-experiment CSV metrics. |
+
+For a one-shot smoke test that does not need any of the above:ㅏ
+
+```bash
+python examples/quickstart.py      # runs on synthetic in-memory data
+```
+
+---
+
+## Repository layout
+
+```
+GeneRAG/
+├── generag/                # the Python package
+│   ├── core.py             # GeneRAG class — the plug-and-play API
+│   ├── solvers.py          # GPU (FISTA) + scikit-learn dispatcher
+│   ├── data.py             # bank construction + .h5ad / .pt I/O helpers
+│   ├── metrics.py          # PCC@K, MSE, MAE, RVD
+│   ├── experiment.py       # multi-GPU hyperparameter sweep runner
+│   └── utils.py            # device selection, seeding
+├── examples/
+│   ├── notebooks/
+│   │   ├── 01_download_data.ipynb     # HEST-1k download         → hest1k_datasets/<ORGAN>/{st,wsis}/
+│   │   ├── 02_build_bank.ipynb        # anchor gene + embeddings → hest1k_datasets/<ORGAN>/processed_data/
+│   │   └── 03_linear_probing.ipynb    # linear probe ŷ_init       → hest1k_datasets/<ORGAN>/init_pred_fm_pt/
+│   ├── quickstart.py       # plug-and-play demo on synthetic data
+│   ├── benchmark.py        # slide-wise / spot-wise wall-time measurement
+│   └── run_experiment.py   # paper-style sweep over (backbone × gene-list)
+├── hest1k_datasets/        # all dataset-scoped artefacts (notebooks + run_experiment all read/write here)
+│   └── PRAD/
+│       ├── st/                          # .h5ad slides (from notebook 01)
+│       ├── wsis/                        # .tif images  (from notebook 01)
+│       ├── processed_data/              # anchor gene lists + per-spot embeddings (notebook 02)
+│       ├── init_pred_fm_pt/             # linear-probe predictions (notebook 03)
+│       └── results/                     # GeneRAG sweep CSVs (run_experiment.py)
+├── pyproject.toml          # pip-installable package metadata
+└── LICENSE                 # MIT
+```
+
+---
+
+## Datasets and backbones
+
+The paper evaluates on three organs from **HEST-1k**:
+
+- **Breast (HER2ST)** — top-300 HVGs for Core HVG; top-5,000 for Global HVG
+- **Kidney** — top-200 HVGs for Core HVG; top-5,000 for Global HVG
+- **Prostate** — top-200 HVGs for Core HVG; top-5,000 for Global HVG
+
+Backbones validated as drop-in encoders include:
+
+- **Stem** (diffusion generative ST model)
+- **UNI** (pathology H&E foundation model)
+- **EXAONE Path 2.5** (multi-modal H&E + omics foundation model)
+
+GeneRAG is architecture-agnostic: any frozen encoder ``E`` and any frozen
+ŷ_init decoder ``D`` whose outputs can be cast into ``f_img`` and
+``y_anchor`` will plug in.
+
+---
+
+## Reproducing the paper
+
+```python
+from generag.experiment import run_sweep
+
+results = run_sweep(
+    bank_expression=bank_df,
+    test_anchor=test_anchor_df,
+    test_gt=ground_truth_df,
+    anchor_genes=anchor_gene_list,
+    bank_embeddings=bank_emb, test_embeddings=test_emb,
+    search_space={
+        'elasticnet': {
+            'alpha': [0.001, 0.01, 0.1],     # λ in Eq. (1)
+            'l1_ratio': [0.5, 0.9],          # 1 - γ in Eq. (1)
+            'embedding_ratio': [0.0, 0.5, 0.75, 1.0],  # ω in Eq. (1)
+            'positive': [True],
+        },
+    },
+    n_jobs=4,                                  # round-robin across GPUs
+    output_csv='results/sweep.csv',
+)
+```
+
+A full end-to-end driver matching the paper's experiments (with bank
+construction, anchor selection, and per-slide evaluation) lives in
+``examples/run_experiment.py``.
+
+---
+
+## Solver backends
+
+| Method | GPU (batched FISTA, PyTorch) | CPU (scikit-learn) |
+|---|:-:|:-:|
+| ElasticNet (used in Eq. 1) | ✅ batched | ✅ |
+| Lasso | ✅ batched | ✅ |
+| Ridge | ✅ closed-form | ✅ |
+| OMP | – | ✅ |
+| LassoLars | – | ✅ |
+| Bayesian Ridge | – | ✅ |
+| NNLS | – | ✅ |
+
+The GPU backend matches scikit-learn's loss definition exactly; on
+production data we measured reconstruction Pearson ``r ≈ 0.999`` between
+the two backends, with the GPU path running ~25–70× faster.
+
+---
+
+## Citation
+
+```bibtex
+@inproceedings{generag2026,
+  title     = {GeneRAG: A Retrieval-Augmented Framework for Spatially
+               Resolved Gene Expression Prediction},
+  author    = {Kim, Hyeongsub and Kim, Sihyun and Cho, Minyoung and
+               Jo, Sanghyun and Lee, Minhyeong and Kim, Kyungsu},
+  booktitle = {Medical Image Computing and Computer Assisted Intervention --
+               MICCAI 2026},
+  series    = {Lecture Notes in Computer Science},
+  publisher = {Springer Nature Switzerland},
+  year      = {2026}
+}
+```
+
+Corresponding author: **Kyungsu Kim** (`kyskim@snu.ac.kr`), Seoul National
+University.
+
+## License
+
+This repository contains two separately licensed components:
+
+- **Code** (the `generag` package, examples, and scripts) — released under
+  the [MIT License](LICENSE).
+- **Paper, figures, and text** — © 2026 the authors. The published
+  version (Version of Record) appears in *Medical Image Computing and
+  Computer Assisted Intervention – MICCAI 2026* (Lecture Notes in Computer
+  Science) and is licensed exclusively to Springer Nature Switzerland AG
+  under the MICCAI 2026 *Licence to Publish*. Reuse of the published
+  paper or its figures is subject to Springer Nature's terms; please cite
+  and link to the Version of Record once the DOI is available.

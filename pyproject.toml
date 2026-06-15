@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "generag"
+version = "0.1.0"
+description = "Plug-and-play retrieval-augmented gene expression prediction from histology images."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = [
+    "spatial-transcriptomics",
+    "computational-pathology",
+    "foundation-models",
+    "retrieval-augmented-generation",
+    "elasticnet",
+    "fista",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.21",
+    "pandas>=1.3",
+    "torch>=2.0",
+    "scikit-learn>=1.0",
+    "scipy>=1.7",
+    "tqdm>=4.60",
+]
+
+[project.optional-dependencies]
+# Convenience I/O helpers for .h5ad and visualization examples.
+io = [
+    "anndata>=0.9",
+]
+viz = [
+    "matplotlib>=3.5",
+]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1",
+]
+all = [
+    "anndata>=0.9",
+    "matplotlib>=3.5",
+]
+
+[tool.setuptools.packages.find]
+include = ["generag*"]
+exclude = ["examples*", "tests*", "results*", "selected_gene*", "init_pred_fm_pt*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

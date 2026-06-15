@@ -1,0 +1,75 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ============================================================
+# IDE / OS
+# ============================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# HEST-1k dataset artefacts (per organ)
+# ------------------------------------------------------------
+# These live under hest1k_datasets/<ORGAN>/ and are produced by
+# examples/notebooks/01_download_data.ipynb → 02 → 03.
+# Small text artefacts (anchor gene lists, slide lists) are kept
+# under version control; heavy binary artefacts are not.
+# ============================================================
+
+# Raw HEST-1k downloads (multi-GB per organ).  No trailing slash so the rules
+# also match symlinks that point to the actual data outside the repo.
+hest1k_datasets/*/st
+hest1k_datasets/*/wsis
+hest1k_datasets/*/cellvit_seg
+
+# Per-spot foundation-model embeddings (notebook 02)
+hest1k_datasets/*/processed_data/1spot_*
+
+# Generated bookkeeping files from notebook 02
+hest1k_datasets/*/processed_data/all_slide_lst.txt
+
+# Linear-probe prediction tensors (notebook 03)
+hest1k_datasets/*/init_pred_fm_pt
+
+# GeneRAG sweep outputs (run_experiment.py)
+hest1k_datasets/*/results
+
+# ============================================================
+# Legacy / scratch directories at repo root
+# ============================================================
+results/
+results_self/
+
+# ============================================================
+# Common heavy / generated artefacts
+# ============================================================
+*.pt
+*.tif
+*.h5ad
+*.log
+
+# CSV outputs from sweeps, but keep example CSVs shipped in /examples
+*.csv
+!examples/**/*.csv
