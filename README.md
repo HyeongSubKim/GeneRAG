@@ -100,7 +100,7 @@ $$
 Requires Python 3.9+.
 
 ```bash
-git clone <repo-url> GeneRAG
+git clone https://github.com/HyeongSubKim/GeneRAG GeneRAG
 cd GeneRAG
 
 python -m venv .venv
