@@ -202,7 +202,7 @@ in its own notebook under [`examples/notebooks/`](examples/notebooks/):
 | **3. Linear probing** | `03_linear_probing.ipynb` | Train a single linear head on the frozen embeddings to produce `ŷ_init` for every test spot; saves `.pt` files into `init_pred_fm_pt/`. |
 | **4. Retrieval** | `examples/run_experiment.py` | Sweep GeneRAG over the (backbone × anchor-gene-list) combinations produced above and write per-experiment CSV metrics. |
 
-For a one-shot smoke test that does not need any of the above:ㅏ
+For a one-shot smoke test that does not need any of the above:
 
 ```bash
 python examples/quickstart.py      # runs on synthetic in-memory data
