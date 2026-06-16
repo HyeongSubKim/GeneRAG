@@ -36,6 +36,20 @@
 
 ## How GeneRAG works
 
+![GeneRAG framework overview](figure/fig1_architecture.jpg)
+
+*Overview of GeneRAG. At test time a frozen H&E image encoder ``E`` turns
+the input patch into a feature embedding ``f_img`` (the **morphology
+retrieval query**), while a frozen gene-expression decoder ``D`` produces
+an initial prediction ``ŷ_init`` (the **gene retrieval query**). Together
+these form a hybrid query into the pre-built **Reference Bank ``D``**,
+whose retrieved answer is reconstructed into the **full gene-expression
+prediction ``ŷ_Full``** — including genes never seen by the backbone. The
+encoder and decoder stay frozen; all adaptation happens in the
+retrieval.*
+
+The retrieval itself is detailed below.
+
 ![GeneRAG Dual-Constrained Retrieval](figure/fig2_retrieval.jpg)
 
 *Dual-Constrained Retrieval. **(a)** A single sparse code ``α`` is solved
