@@ -308,7 +308,7 @@ The GPU backend matches scikit-learn's loss definition exactly; on
 production data we measured reconstruction Pearson ``r ≈ 0.999`` between
 the two backends, with the GPU path running ~25–70× faster.
 
----
+<!-- ---
 
 ## Citation
 
@@ -324,7 +324,7 @@ the two backends, with the GPU path running ~25–70× faster.
   publisher = {Springer Nature Switzerland},
   year      = {2026}
 }
-```
+``` -->
 
 Maintainer: **Hyeongsub Kim** (`hyeongsub.kim@snu.ac.kr`), Seoul National University.
 
