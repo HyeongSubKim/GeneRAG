@@ -130,10 +130,12 @@ def main():
         test_gt = load_ground_truth(test_spots, TEST_SLIDE, ST_PATH)
 
         # Optional embeddings (only needed if embedding_ratio > 0).
-        ebd_subdir = "1spot_exaone_ebd_aug" if model_name == "Exaone" else "1spot_uni_ebd_aug"
-        embed_dir = os.path.join(DATA_PATH, ebd_subdir)
-        bank_emb = load_bank_embeddings(embed_dir, bank_all_df.index.tolist()) if os.path.isdir(embed_dir) else None
-        test_emb = load_test_embeddings(embed_dir, TEST_SLIDE, test_spots) if os.path.isdir(embed_dir) else None
+        # Embedding files follow notebook 02's convention: 1spot_<bb>_ebd_aug/<slide>_<bb>_aug.pt
+        ebd_name = "exaone" if model_name == "Exaone" else "uni"
+        embed_dir = os.path.join(DATA_PATH, f"1spot_{ebd_name}_ebd_aug")
+        ebd_suffix = f"_{ebd_name}_aug.pt"
+        bank_emb = load_bank_embeddings(embed_dir, bank_all_df.index.tolist(), ebd_suffix) if os.path.isdir(embed_dir) else None
+        test_emb = load_test_embeddings(embed_dir, TEST_SLIDE, test_spots, ebd_suffix) if os.path.isdir(embed_dir) else None
 
         out_csv = os.path.join(
             SAVE_DIR,
