@@ -3,7 +3,7 @@
 **A Retrieval-Augmented Framework for Spatially Resolved Gene Expression Prediction.**
 
 [![Project Page](https://img.shields.io/badge/Project-Page-success.svg)](https://hyeongsubkim.github.io/GeneRAG-project-page)
-[![Paper](https://img.shields.io/badge/Paper-MICCAI_2026-blue.svg)](#)
+[![Paper](https://img.shields.io/badge/Paper-MICCAI_2026-blue.svg)](https://papers.miccai.org/miccai-2026/paper/2142_paper.pdf)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python: 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](#)
 
@@ -308,23 +308,22 @@ The GPU backend matches scikit-learn's loss definition exactly; on
 production data we measured reconstruction Pearson ``r ≈ 0.999`` between
 the two backends, with the GPU path running ~25–70× faster.
 
-<!-- ---
+---
 
 ## Citation
 
 ```bibtex
-@inproceedings{generag2026,
-  title     = {GeneRAG: A Retrieval-Augmented Framework for Spatially
-               Resolved Gene Expression Prediction},
-  author    = {Kim, Hyeongsub and Kim, Sihyun and Cho, Minyoung and
-               Jo, Sanghyun and Lee, Minhyeong and Kim, Kyungsu},
-  booktitle = {Medical Image Computing and Computer Assisted Intervention --
-               MICCAI 2026},
-  series    = {Lecture Notes in Computer Science},
-  publisher = {Springer Nature Switzerland},
-  year      = {2026}
+@InProceedings{KimHye_GeneRAG_MICCAI2026,
+        author = { Kim, Hyeongsub AND Kim, Sihyun AND Cho, Minyoung AND Jo, Sanghyun AND Lee, Minhyeong AND Kim, Kyungsu},
+        title = { { GeneRAG: A Retrieval-Augmented Framework for Spatially Resolved Gene Expression Prediction } },
+        booktitle = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2026},
+        year = {2026},
+        publisher = {Springer Nature Switzerland},
+        volume = {LNCS 16895},
+        month = {September},
+        page = {pending}
 }
-``` -->
+```
 
 Maintainer: **Hyeongsub Kim** (`hyeongsub.kim@snu.ac.kr`), Seoul National University.
 
