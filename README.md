@@ -313,15 +313,13 @@ the two backends, with the GPU path running ~25–70× faster.
 ## Citation
 
 ```bibtex
-@InProceedings{KimHye_GeneRAG_MICCAI2026,
-        author = { Kim, Hyeongsub AND Kim, Sihyun AND Cho, Minyoung AND Jo, Sanghyun AND Lee, Minhyeong AND Kim, Kyungsu},
-        title = { { GeneRAG: A Retrieval-Augmented Framework for Spatially Resolved Gene Expression Prediction } },
-        booktitle = {Medical Image Computing and Computer Assisted Intervention -- MICCAI 2026},
-        year = {2026},
-        publisher = {Springer Nature Switzerland},
-        volume = {LNCS 16895},
-        month = {September},
-        page = {pending}
+@inproceedings{kim2026generag,
+  title={GeneRAG: A Retrieval-Augmented Framework for Spatially Resolved Gene Expression Prediction},
+  author={Kim, Hyeongsub and Kim, Sihyun and Cho, Minyoung and Jo, Sanghyun and Lee, Minhyeong and Kim, Kyungsu},
+  booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+  pages={509--518},
+  year={2026},
+  organization={Springer}
 }
 ```
 
